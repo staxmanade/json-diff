@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+	<style>
+		.spinner {
+			margin: 100px auto 0;
+			width: 70px;
+			text-align: center;
+		}
+
+		.spinner>div {
+			width: 18px;
+			height: 18px;
+			background-color: #333;
+
+			border-radius: 100%;
+			display: inline-block;
+			-webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+			animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+		}
+
+		.spinner .bounce1 {
+			-webkit-animation-delay: -0.32s;
+			animation-delay: -0.32s;
+		}
+
+		.spinner .bounce2 {
+			-webkit-animation-delay: -0.16s;
+			animation-delay: -0.16s;
+		}
+
+		@-webkit-keyframes sk-bouncedelay {
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0)
+			}
+			40% {
+				-webkit-transform: scale(1.0)
+			}
+		}
+
+		@keyframes sk-bouncedelay {
+			0%,
+			80%,
+			100% {
+				-webkit-transform: scale(0);
+				transform: scale(0);
+			}
+			40% {
+				-webkit-transform: scale(1.0);
+				transform: scale(1.0);
+			}
+		}
+	</style>
+</head>
+
+<body>
+
+	<h2>JSON Diff</h2>
+
+
+	<div class="spinner">
+		<div class="bounce1"></div>
+		<div class="bounce2"></div>
+		<div class="bounce3"></div>
+	</div>
+
+	<div id="fullPage" style="display: none;">
+		<style>
+			.fill-width {
+				width: 100%;
+			}
+
+			input[type=text] {
+				padding: 5px;
+			}
+			#diffButton {
+				margin: 10px 0;
+				padding: 10px;
+				width: 100px;
+				background-color: lavender;
+			}
+		</style>
+		<div style="width:100%;border:1px solid grey; display:flex;justify-content: space-around;">
+			<div class="fill-width">
+				<input class="fill-width" type="text" name="" id="leftResourceKey" value=""
+				/>
+			</div>
+			<div class="fill-width">
+				<input class="fill-width" type="text" name="" id="rightResourceKey" value=""
+				/>
+			</div>
+		</div>
+		<input type="button" name="" id="diffButton" value="DIFF" />
+		<div id="containerErr" style="width:100%;height:200px;min-height:1000px;border:1px solid grey"></div>
+		<div id="container" style="width:100%;height:600px;min-height:1000px;border:1px solid grey"></div>
+
+		<script src="https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs/loader.js"></script>
+		<script>
+
+			(function () {
+				var leftUrlInputElement = document.getElementById('leftResourceKey');
+				var rightUrlInputElement = document.getElementById('rightResourceKey');
+
+				var urlParams;
+				(window.onpopstate = function () {
+					var match,
+						pl = /\+/g,  // Regex for replacing addition symbol with a space
+						search = /([^&=]+)=?([^&]*)/g,
+						decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+						query = window.location.search.substring(1);
+
+					urlParams = {};
+					while (match = search.exec(query))
+						urlParams[decode(match[1])] = decode(match[2]);
+				})();
+
+
+				window.addEventListener('popstate', function () {
+					console.log('onpopstate', arguments);
+					runPage();
+				});
+
+				var hasRunPageLoadOnce = false;
+
+				function setVisibility(visibleSelector, hideSelector) {
+					function setDisplay(elem, value) {
+						if (elem) {
+							elem.style.display = value;
+						}
+					}
+					setDisplay(document.querySelector(visibleSelector), "inherit");
+					setDisplay(document.querySelector(hideSelector), "none");
+				}
+
+				function runPage(instantDiff) {
+					if (!hasRunPageLoadOnce && urlParams.leftUrl && urlParams.rightUrl) {
+						leftUrlInputElement.value = urlParams.leftUrl;
+						rightUrlInputElement.value = urlParams.rightUrl;
+
+						instantDiff = true;
+						hasRunPageLoadOnce = true;
+
+					}
+
+					var job = Promise.resolve();
+					if (instantDiff) {
+						job = diffInputItems();
+					}
+
+					return job.then(function () {
+						spinner(false)
+					}).catch(function (err) {
+						spinner(false);
+
+
+						setVisibility('#containerErr', '#container');
+
+						var editor = monaco.editor.create(document.getElementById('containerErr'), {
+							value: err.toString(),
+							language: 'javascript'
+						});
+
+					});
+				}
+
+				function diffInputItems() {
+					spinner(true);
+					var leftUrl = leftUrlInputElement.value;
+					var rightUrl = rightUrlInputElement.value;
+					return diffUrls(leftUrl, rightUrl);
+				}
+
+				var recursivelyOrderKeys = function (unordered) {
+
+					if (Array.isArray(unordered)) {
+						unordered.forEach(function (item, index) {
+							unordered[index] = recursivelyOrderKeys(item);
+						});
+						return unordered;
+					}
+
+					if (typeof unordered === 'object') {
+						var ordered = {};
+						Object.keys(unordered).sort().forEach(function (key) {
+							ordered[key] = recursivelyOrderKeys(unordered[key]);
+						});
+						return ordered;
+					}
+
+					return unordered;
+				};
+
+				var stringifyKeysInOrder = function (data) {
+					var sortedData = recursivelyOrderKeys(data);
+					return JSON.stringify(sortedData, null, '  ');
+				};
+
+				function diffUrls(leftUrl, rightUrl) {
+					console.log('diffUrls');
+					console.log('left', leftUrl);
+					console.log('right', rightUrl);
+
+					var newUrl = `?leftUrl=${leftUrl}&rightUrl=${rightUrl}`;
+					if (newUrl !== location.search) {
+						console.log('pushState', newUrl);
+						history.pushState({}, "", newUrl);
+					}
+
+					function getJSON(url) {
+						return fetch(url)
+							.then((res) => {
+								console.log(res);
+								return res.json();
+							}).catch(err => {
+								throw new Error(`loading ${url}: ` + err);
+							});
+					}
+
+					return Promise.all([
+						getJSON(leftUrl),
+						getJSON(rightUrl)
+					]).then(function (result) {
+						var leftJSON = result[0];
+						var rightJSON = result[1];
+
+						var originalTxt = stringifyKeysInOrder(leftJSON);
+						var modifiedTxt = stringifyKeysInOrder(rightJSON);
+
+						spinner(false);
+						setVisibility('#container', '#containerErr');
+						var diffEditor = monaco.editor.createDiffEditor(document.getElementById('container'));
+
+
+						diffEditor.setModel({
+							original: monaco.editor.createModel(originalTxt, 'json'),
+							modified: monaco.editor.createModel(modifiedTxt, 'json'),
+						});
+					});
+
+				}
+
+				function spinner(on) {
+					if (on) {
+						setVisibility('.spinner', '#fullPage');
+					} else {
+						setVisibility('#fullPage', '.spinner');
+					}
+				}
+
+				require.config({ paths: { 'vs': 'https://microsoft.github.io/monaco-editor/node_modules/monaco-editor/min/vs' } });
+				require(['vs/editor/editor.main'], function () {
+
+
+					document.getElementById('diffButton').addEventListener('click', runPage.bind(null, true));
+
+					runPage();
+				});
+			})();
+		</script>
+
+	</div>
+</body>
+
+</html>
