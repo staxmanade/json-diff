@@ -126,8 +126,8 @@
 		</style>
 
 		<div class="tab">
-			<button class="tabLinks" onclick="useTab(event, 'urlTab')" data-tab-type="url">JSON URLs</button>
-			<button class="tabLinks" onclick="useTab(event, 'textTab')" data-tab-type="text">Raw JSON Text</button>
+			<button class="tabLinks" id="urlTabButton" onclick="useTab(event, 'urlTab')" data-tab-type="url">JSON URLs</button>
+			<button class="tabLinks" id="textTabButton" onclick="useTab(event, 'textTab')" data-tab-type="text">Raw JSON Text</button>
 		</div>
 
 		<!-- Tab content -->
@@ -145,11 +145,10 @@
 		<div id="textTab" class="tabcontent">
 			<div style="width:100%;border:1px solid grey; display:flex;justify-content: space-around;">
 				<div class="fill-width">
-					<textarea class="fill-width" rows="10" id="leftTextArea" value="" placeholder="Left JSON Input - EX:&#10;&#10;{&#10;  &quot;attr&quot;: true&#10;}"
-					 }">{"hello": true}</textarea>
+					<textarea class="fill-width" rows="10" id="leftTextArea" value="" placeholder="Left JSON Input - EX:&#10;&#10;{&#10;  &quot;attr&quot;: true&#10;}"></textarea>
 				</div>
 				<div class="fill-width">
-					<textarea class="fill-width" rows="10" id="rightTextArea" value="" placeholder="Right JSON Input - EX:&#10;&#10;{&#10;  &quot;attr&quot;: false&#10;}">{"hello": false}</textarea>
+					<textarea class="fill-width" rows="10" id="rightTextArea" value="" placeholder="Right JSON Input - EX:&#10;&#10;{&#10;  &quot;attr&quot;: false&#10;}"></textarea>
 				</div>
 			</div>
 		</div>
@@ -162,12 +161,6 @@
 
 		<script>
 			(function () {
-				// todo set app state based on querystring?
-				// set left/right text/url's based on querystring?
-				window.appState = {
-					currentTab: 'textTab'
-				}
-
 				window.useTab = function useTab(evt, tabName) {
 					// Declare all variables
 
@@ -187,14 +180,13 @@
 					document.getElementById(tabName).style.display = "block";
 					evt.currentTarget.classList.add("active");
 
-					window.appState.currentTab = tabName;
-					window.appState.currentJob = tabName === 'url' ? diffUrlItems : diffTextItems;
+					setAppState({currentTab: tabName});
 				}
 
 				document.addEventListener('DOMContentLoaded', function () {
 					useTab({
-						currentTarget: document.querySelector('[data-tab-type="text"]')
-					}, window.appState.currentTab);
+						currentTarget: document.querySelector(`#${appState.currentTab}Button`)
+					}, appState.currentTab);
 				});
 
 				var leftUrlInputElement = document.getElementById('leftUrl');
@@ -218,7 +210,68 @@
 					runPage();
 				});
 
+				function getPageData() {
+					// var leftText = ;
+					// var rightText = ;
+					// console.log('leftText', leftText);
+					// console.log('rightText', rightText);
+
+					// var leftJSON;
+					// var rightJSON;
+					// // try {
+					// 	leftJSON = JSON.parse(leftText || null);
+					// 	rightJSON = JSON.parse(rightText || null);
+					// // } catch (error) {
+					// // 	console.error("Error parsing json", error);
+					// // }
+					// console.log('leftJSON', leftJSON);
+					// console.log('rightJSON', rightJSON);
+
+					return {
+						leftUrl: document.getElementById('leftUrl').value,
+						rightUrl: document.getElementById('rightUrl').value,
+						leftText: document.querySelector('#leftTextArea').value,
+						rightText: document.querySelector('#rightTextArea').value
+					}
+				}
+
+				// todo set app state based on querystring?
+				// set left/right text/url's based on querystring?
+				var appState = getAppStateFromUrl();
+
 				var hasRunPageLoadOnce = false;
+
+				function getAppStateFromUrl() {
+					var urlAppState = urlParams.appState;
+
+					try {
+						urlAppState = JSON.parse(urlAppState);
+					} catch (error) {
+						console.log('Could not parse appState url param', error);
+					}
+
+					console.log('getAppState', urlAppState);
+
+					if (!urlAppState) {
+						return setAppState({
+							currentTab: 'urlTab'
+						});
+					}
+
+					urlAppState = Object.assign({
+						currentTab: "urlTab"
+					}, urlAppState);
+
+					return urlAppState;
+				}
+
+				function setAppState(newState) {
+					appState = Object.assign({}, appState, newState);
+					var serializedState = JSON.stringify(appState);
+					var newUrl = `?appState=${encodeURIComponent(serializedState)}`;
+					history.replaceState({}, "", newUrl);
+					return appState;
+				}
 
 				function setVisibility(visibleSelector, hideSelector) {
 					function setDisplay(elem, value) {
@@ -230,61 +283,53 @@
 					setDisplay(document.querySelector(hideSelector), "none");
 				}
 
-				function runPage(instantDiff) {
-					if (!hasRunPageLoadOnce && urlParams.leftUrl && urlParams.rightUrl) {
-						leftUrlInputElement.value = urlParams.leftUrl;
-						rightUrlInputElement.value = urlParams.rightUrl;
-
-						instantDiff = true;
-						hasRunPageLoadOnce = true;
-
-					}
+				function runPage() {
+					spinner(true);
 
 					var job = Promise.resolve();
 
-					if (instantDiff) {
-						job = window.appState.currentJob();
+					var pageData = getPageData();
+					console.log('appState', appState);
+					console.log('pageData', pageData);
+
+					setAppState(pageData)
+
+					if (appState.currentTab === 'urlTab') {
+						if (pageData.leftUrl && pageData.rightUrl) {
+							job = job.then(() => diffUrls(pageData.leftUrl, pageData.rightUrl));
+						}
+					} else {
+						if (pageData.leftText || pageData.rightText) {
+							job = job.then(() => {
+								var leftText = pageData.leftText || null;
+								var rightText = pageData.rightText || null;
+								console.log('leftText', leftText);
+								console.log('rightText', rightText);
+								var leftJSON;
+								var rightJSON
+								try {
+									leftJSON = JSON.parse(leftText);
+								} catch (error) {
+									throw new Error("parsing left text area:\n\n  " + error.toString());
+								}
+								try {
+									rightJSON = JSON.parse(rightText);
+								} catch (error) {
+									throw new Error("parsing right text area:\n\n  " + error.toString());
+								}
+								console.log('leftJSON', leftJSON);
+								console.log('rightJSON', rightJSON);
+
+								return diffJSONText(leftJSON, rightJSON);
+							});
+						}
 					}
 
 					return job.then(function () {
 						spinner(false)
-					}).catch(function (err) {
+					}).catch(function (error) {
 						spinner(false);
-
-						console.error(err);
-						setVisibility('#containerErr', '#container');
-
-						var editor = monaco.editor.create(document.getElementById('containerErr'), {
-							value: err.toString(),
-							language: 'javascript'
-						});
-
-					});
-				}
-
-				function diffUrlItems() {
-					spinner(true);
-					var leftUrl = leftUrlInputElement.value;
-					var rightUrl = rightUrlInputElement.value;
-					console.log('leftUrl', leftUrl);
-					console.log('rightUrl', rightUrl);
-					return diffUrls(leftUrl, rightUrl);
-				}
-
-				function diffTextItems() {
-					spinner(true);
-					return Promise.resolve().then(function () {
-						var leftText = document.querySelector('#leftTextArea').value;
-						var rightText = document.querySelector('#rightTextArea').value;
-						console.log('leftText', leftText);
-						console.log('rightUrl', rightText);
-
-						var leftJSON = JSON.parse(leftText);
-						var rightJSON = JSON.parse(rightText);
-						console.log('leftText', leftJSON);
-						console.log('rightUrl', rightJSON);
-
-						return diffJSONText(leftJSON, rightJSON);
+						createEditor(error);
 					});
 				}
 
@@ -297,7 +342,7 @@
 						return unordered;
 					}
 
-					if (typeof unordered === 'object') {
+					if (typeof unordered === 'object' && unordered !== null) {
 						var ordered = {};
 						Object.keys(unordered).sort().forEach(function (key) {
 							ordered[key] = recursivelyOrderKeys(unordered[key]);
@@ -318,19 +363,16 @@
 					console.log('left', leftUrl);
 					console.log('right', rightUrl);
 
-					var newUrl = `?leftUrl=${leftUrl}&rightUrl=${rightUrl}`;
-					if (newUrl !== location.search) {
-						console.log('pushState', newUrl);
-						history.pushState({}, "", newUrl);
-					}
-
 					function getJSON(url) {
 						return fetch(url)
 							.then((res) => {
 								console.log(res);
 								return res.json();
-							}).catch(err => {
-								throw new Error(`loading ${url}: ` + err);
+							}).catch(error => {
+								if (confirm(`Failed to load url: ${url}\n\nOpen in a new tab to manually copy/paste?`)) {
+									window.open(url, '_blank');
+								}
+								throw new Error(`loading ${url}: ` + error);
 							});
 					}
 
@@ -343,21 +385,41 @@
 
 						return diffJSONText(leftJSON, rightJSON);
 					});
-
 				}
 
 				function diffJSONText(leftJSON, rightJSON) {
 					var originalTxt = stringifyKeysInOrder(leftJSON);
 					var modifiedTxt = stringifyKeysInOrder(rightJSON);
 
-					spinner(false);
-					setVisibility('#container', '#containerErr');
-					var diffEditor = monaco.editor.createDiffEditor(document.getElementById('container'));
+					createEditor(null, originalTxt, modifiedTxt)
+				}
 
-					diffEditor.setModel({
-						original: monaco.editor.createModel(originalTxt, 'json'),
-						modified: monaco.editor.createModel(modifiedTxt, 'json'),
-					});
+				function createEditor(error, originalTxt, modifiedTxt) {
+					spinner(false);
+
+					var container = document.getElementById('container');
+					var containerErr = document.getElementById('containerErr');
+
+					container.innerHTML = '';
+					containerErr.innerHTML = '';
+
+					if (error) {
+						console.error(error);
+						setVisibility('#containerErr', '#container');
+
+						monaco.editor.create(containerErr, {
+							value: error.toString(),
+							language: 'javascript'
+						});
+					} else {
+						setVisibility('#container', '#containerErr');
+
+						var diffEditor = monaco.editor.createDiffEditor(container);
+						diffEditor.setModel({
+							original: monaco.editor.createModel(originalTxt, 'json'),
+							modified: monaco.editor.createModel(modifiedTxt, 'json'),
+						});
+					}
 				}
 
 				function spinner(on) {
