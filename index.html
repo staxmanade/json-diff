@@ -155,7 +155,7 @@
 
 		<input type="button" name="" id="diffButton" value="DIFF" />
 		<div id="containerErr" style="width:100%;height:200px;min-height:1000px;border:1px solid grey"></div>
-		<div id="container" style="width:100%;height:600px;min-height:1000px;border:1px solid grey"></div>
+		<div id="container" style="display:none;width:100%;height:600px;min-height:1000px;border:1px solid grey"></div>
 
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.14.3/min/vs/loader.js"></script>
 
@@ -211,22 +211,6 @@
 				});
 
 				function getPageData() {
-					// var leftText = ;
-					// var rightText = ;
-					// console.log('leftText', leftText);
-					// console.log('rightText', rightText);
-
-					// var leftJSON;
-					// var rightJSON;
-					// // try {
-					// 	leftJSON = JSON.parse(leftText || null);
-					// 	rightJSON = JSON.parse(rightText || null);
-					// // } catch (error) {
-					// // 	console.error("Error parsing json", error);
-					// // }
-					// console.log('leftJSON', leftJSON);
-					// console.log('rightJSON', rightJSON);
-
 					return {
 						leftUrl: document.getElementById('leftUrl').value,
 						rightUrl: document.getElementById('rightUrl').value,
