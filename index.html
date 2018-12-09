@@ -161,6 +161,7 @@
 
 		<script>
 			(function () {
+				// using onclick in the html - so we make this a window/global function
 				window.useTab = function useTab(evt, tabName) {
 					// Declare all variables
 
@@ -183,15 +184,6 @@
 					setAppState({currentTab: tabName});
 				}
 
-				document.addEventListener('DOMContentLoaded', function () {
-					useTab({
-						currentTarget: document.querySelector(`#${appState.currentTab}Button`)
-					}, appState.currentTab);
-				});
-
-				var leftUrlInputElement = document.getElementById('leftUrl');
-				var rightUrlInputElement = document.getElementById('rightUrl');
-
 				var urlParams;
 				(window.onpopstate = function () {
 					var match,
@@ -210,6 +202,17 @@
 					runPage();
 				});
 
+				document.addEventListener('DOMContentLoaded', function () {
+					window.useTab({
+						currentTarget: document.querySelector(`#${appState.currentTab}Button`)
+					}, appState.currentTab);
+				});
+
+
+				var appState = getAppStateFromUrl();
+				initializeView(appState);
+
+
 				function getPageData() {
 					return {
 						leftUrl: document.getElementById('leftUrl').value,
@@ -219,11 +222,12 @@
 					}
 				}
 
-				// todo set app state based on querystring?
-				// set left/right text/url's based on querystring?
-				var appState = getAppStateFromUrl();
-
-				var hasRunPageLoadOnce = false;
+				function initializeView(appState) {
+					document.getElementById('leftUrl').value = appState.leftUrl;
+					document.getElementById('rightUrl').value = appState.rightUrl;
+					document.querySelector('#leftTextArea').value = appState.leftText;
+					document.querySelector('#rightTextArea').value = appState.rightText;
+				}
 
 				function getAppStateFromUrl() {
 					var urlAppState = urlParams.appState;
@@ -285,22 +289,21 @@
 					} else {
 						if (pageData.leftText || pageData.rightText) {
 							job = job.then(() => {
-								var leftText = pageData.leftText || null;
-								var rightText = pageData.rightText || null;
+								function parseIt(value, type) {
+									if (value !== emptyStringConst) {
+										try {
+											return JSON.parse(value);
+										} catch (error) {
+											throw new Error(`parsing ${type} text area:\n\n  ${error}`);
+										}
+									}
+								}
+								var leftText = pageData.leftText || emptyStringConst;
+								var rightText = pageData.rightText || emptyStringConst;
 								console.log('leftText', leftText);
 								console.log('rightText', rightText);
-								var leftJSON;
-								var rightJSON
-								try {
-									leftJSON = JSON.parse(leftText);
-								} catch (error) {
-									throw new Error("parsing left text area:\n\n  " + error.toString());
-								}
-								try {
-									rightJSON = JSON.parse(rightText);
-								} catch (error) {
-									throw new Error("parsing right text area:\n\n  " + error.toString());
-								}
+								var leftJSON = parseIt(leftText, 'left');
+								var rightJSON = parseIt(rightText, 'right');
 								console.log('leftJSON', leftJSON);
 								console.log('rightJSON', rightJSON);
 
@@ -337,6 +340,8 @@
 					return unordered;
 				};
 
+				var emptyStringConst = 'EMPTY_STRING_CONST_Thingy';
+
 				var stringifyKeysInOrder = function (data) {
 					var sortedData = recursivelyOrderKeys(data);
 					return JSON.stringify(sortedData, null, '  ');
@@ -372,8 +377,8 @@
 				}
 
 				function diffJSONText(leftJSON, rightJSON) {
-					var originalTxt = stringifyKeysInOrder(leftJSON);
-					var modifiedTxt = stringifyKeysInOrder(rightJSON);
+					var originalTxt = leftJSON === emptyStringConst ? '' : stringifyKeysInOrder(leftJSON);
+					var modifiedTxt = rightJSON  === emptyStringConst ? '' : stringifyKeysInOrder(rightJSON);
 
 					createEditor(null, originalTxt, modifiedTxt)
 				}
