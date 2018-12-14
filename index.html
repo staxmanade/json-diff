@@ -213,17 +213,17 @@
 				function getPageData() {
 					return {
 						leftUrl: document.getElementById('leftUrl').value || '',
-						rightUrl: document.getElementById('rightUrl').value | '',
-						leftText: document.querySelector('#leftTextArea').value,
-						rightText: document.querySelector('#rightTextArea').value
+						rightUrl: document.getElementById('rightUrl').value || '',
+						leftText: document.querySelector('#leftTextArea').value || '',
+						rightText: document.querySelector('#rightTextArea').value || ''
 					}
 				}
 
 				function initializeView(appState) {
 					document.getElementById('leftUrl').value = appState.leftUrl || '';
 					document.getElementById('rightUrl').value = appState.rightUrl || '';
-					document.querySelector('#leftTextArea').value = appState.leftText;
-					document.querySelector('#rightTextArea').value = appState.rightText;
+					document.querySelector('#leftTextArea').value = appState.leftText || '';
+					document.querySelector('#rightTextArea').value = appState.rightText || '';
 				}
 
 				function getAppStateFromUrl() {
