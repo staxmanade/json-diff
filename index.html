@@ -238,8 +238,11 @@
 					console.log('getAppState', urlAppState);
 
 					if (!urlAppState) {
+
 						return setAppState({
-							currentTab: 'urlTab'
+							currentTab: 'urlTab',
+							leftUrl: urlParams.leftUrl || '',
+							rightUrl: urlParams.rightUrl || ''
 						});
 					}
 
