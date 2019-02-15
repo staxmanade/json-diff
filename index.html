@@ -355,11 +355,35 @@
 							.then((res) => {
 								console.log(res);
 								return res.json();
-							}).catch(error => {
+							})
+							.catch(error => {
+
+								console.error("Failed to use fetch for " + url + '. Error:', error);
+								// todo notify of failed to fetch with first attempt.
+
+								return fetch('https://cors-anywhere.herokuapp.com/' + url, {
+									headers: {
+										'x-requested-with': 'json-diff-tool'
+									}})
+									.then(x => x.json());
+							})
+							.catch(error => {
+
+							// 	console.error("Failed to use cors-anywhere.herokuapp.com for " + 'https://cors-anywhere.herokuapp.com/' + url + '. Error:', error);
+							// 	// todo notify of failed to fetch with first attempt.
+
+							// 	return fetch('https://crossorigin.me/' + url, {
+							// 		headers: {
+							// 			'x-requested-with': 'json-diff-tool'
+							// 		}})
+							// 		.then(x => x.json());
+							// 	})
+							// .catch((err) => {
+
 								if (confirm(`Failed to load url: ${url}\n\nOpen in a new tab to manually copy/paste?`)) {
 									window.open(url, '_blank');
 								}
-								throw new Error(`loading ${url}: ` + error);
+								throw new Error(`Loading ${url}: ` + error);
 							});
 					}
 
