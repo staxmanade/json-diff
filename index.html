@@ -6,10 +6,7 @@
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 	<style>
 		html, body {
-			height: calc(100% - 80px);
-		}
-		#fullPage {
-			height: calc(100% - 80px);
+			height: 100%;
 		}
 
 		.render-body {
@@ -265,7 +262,7 @@
 					history.replaceState({}, "", newUrl);
                   
 					var fullPageDiv = document.getElementById('fullPage');
-					fullPageDiv.style.height = appState.currentTab === 'urlTab'? 'calc(100% - 80px)' : 'calc(100% - 180px)';
+					fullPageDiv.style.height = appState.currentTab === 'urlTab'? 'calc(100% - 67px)' : 'calc(100% - 180px)';
 					return appState;
 				}
 
