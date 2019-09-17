@@ -5,7 +5,10 @@
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 	<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 	<style>
-		html, body, #fullPage {
+		html, body {
+			height: calc(100% - 80px);
+		}
+		#fullPage {
 			height: calc(100% - 80px);
 		}
 
@@ -182,7 +185,6 @@
 					// Show the current tab, and add an "active" class to the button that opened the tab
 					document.getElementById(tabName).style.display = "block";
 					evt.currentTarget.classList.add("active");
-
 					setAppState({currentTab: tabName});
 				}
 
@@ -261,6 +263,9 @@
 					var serializedState = JSON.stringify(appState);
 					var newUrl = `?appState=${encodeURIComponent(serializedState)}`;
 					history.replaceState({}, "", newUrl);
+                  
+					var fullPageDiv = document.getElementById('fullPage');
+					fullPageDiv.style.height = appState.currentTab === 'urlTab'? 'calc(100% - 80px)' : 'calc(100% - 180px)';
 					return appState;
 				}
 
